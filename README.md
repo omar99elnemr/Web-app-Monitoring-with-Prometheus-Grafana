@@ -1,49 +1,129 @@
-# Taskmaster Application Monitoring
+# DevOps Pipeline
 
-The application specifically used as the target for monitoring in this demonstration is a **Java-based web application**. This application is referred to as the **Taskmaster application**.
+## Using Microservice Application (PHP | Apache | Mysql) | Monitoring using (Prometheus & Grafana)
 
-Here's a detailed breakdown of the application and its role in the monitoring setup:
+### 1. Dockerfile:
 
-## Nature and Purpose
+`To build php-apache Image`
 
-The Taskmaster application is a **Java-based web application** that serves as the "website" or "application" to be monitored. The primary goal is to demonstrate how to track its health and status.
+### 2. docker-compose:
 
-## Deployment and Accessibility
+`To split the application to microservices (php-apache | mysql | phpmyadmin)`
 
-- It is deployed and **runs on the first virtual machine**, which is designated as the **"application server"**.
-- The application is accessible via a web browser on **Port 880** using the IP address of the application server.
-- To prepare the environment for this application, Java (specifically OpenJDK 17 headless) and Maven are installed on the application server, and the application's repository is cloned, built, and then run as a `.jar` file in the background.
-- {Screenshot placeholder: showing the application running in a browser at IP:880}
+### 3. ansible-playbooks:
 
-## Specific Monitoring Objectives
+`To automate the build of the Dockerfile & the docker-compose.yml`
 
-For this web application, the monitoring focuses on key aspects of its availability and security:
+### 4. Kubernetes:
 
-- **Up/Down Status**: Whether the website is operational.
-- **Reachability**: If it can be successfully accessed.
-- **SSL Certificate Status**: Whether it possesses an SSL certificate.
+`Deploy Microservice application that contains PHP, Apache, MySql, and PhpMyAdmin`
 
-## Monitoring Tool – Blackbox Exporter
+### 5. Terraform:
 
-- The **Blackbox Exporter** is the specific tool used to gather metrics for the Taskmaster web application.
-- It operates by sending "probes" or **HTTP requests** to the website to check its reachability and **HTTP status** (e.g., looking for an HTTP 200 response for success). It also checks for the presence of an SSL certificate.
-- Notably, the Blackbox Exporter **does not need to be installed on the same server where the Taskmaster application is running**. It can be installed anywhere, typically on the "monitoring server", as it simply sends requests to the target website's URL to gather information.
-- {Screenshot placeholder: showing Blackbox Exporter running and listening on Port 9115}
+`To automate the infrastruction of building Jenkins EC2`
 
-## Prometheus Configuration
+### 6. Jenkinsfiles:
 
-- The URL of the Taskmaster application (the IP address of the application server on Port 880) is explicitly added as a target within the `prometheus.yaml` configuration file for the Blackbox Exporter to monitor.
-- Prometheus, the core monitoring component and data source, then scrapes these metrics collected by the Blackbox Exporter.
-- {Screenshot placeholder: showing the `prometheus.yaml` configuration with the Taskmaster application's URL}
-- {Screenshot placeholder: showing the Prometheus UI with the Taskmaster application's URL listed as an "up" target}
+`To automate creating the cluster`
+`To automate deploying the application`
+`To automate deploying the monitoring`
 
-## Grafana Visualisation
+## Step 1: Build Jenkins EC2 Instance
 
-- A dedicated Grafana dashboard for Blackbox Exporter is imported and configured to display the monitoring data for the Taskmaster application.
-- This dashboard visually presents the application's status (e.g., "up"), HTTP status code (e.g., "200"), and whether an SSL certificate is present. It also shows probe and HTTP duration, indicating the time taken for requests.
-- This makes the collected metrics easily understandable for human analysis.
-- {Screenshot placeholder: showing the Grafana Blackbox Exporter dashboard displaying the Taskmaster application's status}
+`Make sure you create tfvars file with the region, ami and public-ssh`
 
-## Summary
+```
+$ cd terraform
+$ terraform init
+$ terraforl apply -auto-approve
+```
 
-In summary, the **Taskmaster application** is the key **web application** whose performance and availability are continuously monitored throughout the demonstration, leveraging Blackbox Exporter for metric collection, Prometheus for storage and scraping, and Grafana for insightful visualisation.
+### Step 2: Connect to the EC2 using SSH
+
+---
+
+`You can use the downloaded keypair or just use the user and public-ip`
+
+---
+
+```
+$ ssh -i file.pem ubuntu@<public-ip>
+OR
+$ ssh ubuntu@<public-ip>
+```
+
+### Step 3: Create sh file
+
+---
+
+`Use the same script in the current directory install.sh`
+
+---
+
+```
+$ vim install.sh
+$ chmod +x install.sh
+$ ./install.sh
+```
+
+### Step 4: Make sure all has been installed successfully
+
+```
+java -version
+jenkins --version
+docker --version
+ansible --version
+docker-compose --version
+eksctl version
+minikube version
+k9s version
+aws --version
+```
+
+### Step 5: Browse to Jenkins
+
+---
+
+`Navigate to the browser and use the following to access jenkins then proceed with setting up jenkins`
+
+---
+
+```
+<public-ip>:8080
+```
+
+---
+
+### Step 6: Add Credentials for Dockerhub, Github and AWS
+
+`For AWS you will need to download the folloowing Plugin:` [CloudBees AWS Credentials](https://plugins.jenkins.io/aws-credentials/)
+
+Plugin:
+
+```
+Manage Jenkins > Manage Plugins > Available > CloudBees AWS Credentials
+```
+
+Add Credentials:
+
+```
+Manage Jenkins > Manage Credentials > global > Add Credentials
+```
+
+---
+
+### Step 6: Create 1st Jenkins job
+
+This job is to run the jenkinsfile in [Jenkins/Jenkins-EKS](https://github.com/johnbedeir/e-conomic/tree/dev/Jenkins/Jenkins-Deploy) which will create the cluster and the namespace
+
+---
+
+### Step 7: Create 2nd Jenkins job
+
+This job is to run the jenkinsfile in [Jenkins/Jenkins-Deploy](https://github.com/johnbedeir/e-conomic/tree/dev/Jenkins/Jenkins-EKS) which will deploy monitoring and the microservice application
+
+---
+
+### Step 8: Create 3nd Jenkins job
+
+This job is to run the jenkinsfile in [Jenkins/Jenkins-RM-EKS](https://github.com/johnbedeir/e-conomic/tree/dev/Jenkins/Jenkins-RM-EKS) which will delete the created cluster
